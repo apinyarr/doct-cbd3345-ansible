@@ -1,0 +1,91 @@
+---
+- name: Host Preparation and Security Hardening
+  hosts: '{{ hostname | default("github_runners") }}'
+  become: yes
+
+  tasks:
+    - name: Update APT package cache and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Disable root login via SSH
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: yes
+      notify: Restart SSH
+
+    - name: Configure SSH server parameters
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      notify: Restart SSH
+      with_items:
+        - { regexp: '#PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '#PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+        - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
+
+    - name: Set appropriate permissions on sensitive files
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: "0600"
+      with_items:
+        # - { path: "/etc/passwd" }
+        - { path: "/etc/shadow" }
+        - { path: "/etc/ssh/sshd_config" }
+
+    - name: Install auditd  (state=present is optional)
+      ansible.builtin.apt:
+        name: auditd
+        state: present
+
+    - name: Install essential security tools
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - ufw  # Uncomplicated Firewall
+        - fail2ban  # Intrusion prevention system
+        - aide  # File integrity checker
+        - debsums  # Verification of installed package files
+
+    - name: Configure UFW (Uncomplicated Firewall)
+      ufw:
+        state: enabled
+        policy: deny  # Set default policy to deny incoming traffic
+        proto: tcp
+        port: 22  # Allow SSH
+        rule: allow
+
+    # - name: Configure Fail2ban
+    #   template:
+    #     src: fail2ban.j2
+    #     dest: /etc/fail2ban/jail.local
+    #   notify: Restart Fail2ban
+    
+    - name: Initialize AIDE database
+      command: aideinit
+      args:
+        creates: /var/lib/aide/aide.db
+
+    - name: Schedule periodic AIDE checks
+      cron:
+        name: Run AIDE integrity check
+        job: aide --check
+        minute: "0"
+        hour: "6"
+
+    - name: Verify installed package files
+      command: debsums -c
+
+  handlers:
+    - name: Restart SSH
+      service: 
+        name: ssh
+        state: restarted 
+        enabled: true

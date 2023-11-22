@@ -2,7 +2,7 @@
 - name: Host Preparation and Security Hardening
   hosts: '{{ hostname | default("github_runners") }}'
   become: yes
-
+  ###### This ansible-playbook is tested with Ubuntu 22.04 ######
   tasks:
     - name: Update APT package cache and upgrade packages
       apt:
@@ -68,15 +68,24 @@
           - python3-pip   # pip command
           - virtualenv
           - python3-setuptools
+          - unzip
         state: latest
         update_cache: true
 
     # Install Java OpenJDK 20
-    - name: Install Java version 20
+    - name: Install Java version 17
       apt:
-        name: openjdk-20-jre-headless
+        name: openjdk-17-jre-headless
         state: present
         update_cache: yes
+
+    # Install AWS CLI with pip
+    - name: Install AWS CLI package
+      ansible.builtin.pip:
+        name: awscli
+
+    - name: Install missing package files   # Install missing files from Debsums report
+      shell: apt-get -y --reinstall install $(debsums -c 2>&1 | grep -E -o 'from [^ ]* package' | cut -d\  -f2 | sort -u)
 
     - name: Verify installed package files    # Verification of Installed Package Files
       command: debsums -c   # Report changed files

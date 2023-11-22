@@ -2,9 +2,9 @@
 - name: Allow users to access the server via SSH
   hosts: '{{ hostname | default("github_runners") }}'
   become: yes
-
+  ###### This ansible-playbook is tested with Ubuntu 22.04 ######
   vars_files:
-    - ../shared_vars/team_pub_keys_secret.yml   # The encrypted file that store users public keys (vault secret is required to decrypt)
+    - ../shared_vars/team_pub_keys_secret.yml   # The encrypted file that store users public keys (vault key is required to decrypt)
 
   tasks:
     - name: Add lead public key to host   # Lead is always allowed to access production and staging servers

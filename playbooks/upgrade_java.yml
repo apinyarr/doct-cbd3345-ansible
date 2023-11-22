@@ -1,0 +1,17 @@
+---
+- name: Upgrade Java to version 22
+  hosts: '{{ hostname | default("github_runners") }}'
+  become: yes
+
+  tasks:
+    # Ensure Java is installed and at the specific version
+    - name: Check if Java is installed
+      command: java -version
+      register: java_check
+      ignore_errors: yes
+
+    - name: Install Java if not present or at a different version
+      apt:
+        name: openjdk-22-jre-headless  # Replace with the desired Java version package name
+        state: present
+      when: java_check.rc != 0 or '"22."' not in java_check.stderr  # Check Java version

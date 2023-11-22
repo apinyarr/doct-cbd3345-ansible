@@ -9,7 +9,7 @@
         update_cache: yes
         upgrade: yes
 
-    - name: Disable root login via SSH
+    - name: Disable root login via SSH    # SSH using root user is disabled
       lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#PermitRootLogin'
@@ -24,22 +24,21 @@
         line: "{{ item.line }}"
       notify: Restart SSH
       with_items:
-        - { regexp: '#PasswordAuthentication', line: 'PasswordAuthentication no' }
-        - { regexp: '#PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
-        - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
+        - { regexp: '#PasswordAuthentication', line: 'PasswordAuthentication no' }    # Disable SSH password authentication
+        - { regexp: '#PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }    # Do not allow empty password
+        - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }    # Do not allow X11 Forwarding
 
-    - name: Set appropriate permissions on sensitive files
+    - name: Set appropriate permissions on sensitive files    # Files in the items can only read and write by the owner
       file:
         path: "{{ item.path }}"
         owner: root
         group: root
         mode: "0600"
       with_items:
-        # - { path: "/etc/passwd" }
         - { path: "/etc/shadow" }
         - { path: "/etc/ssh/sshd_config" }
 
-    - name: Install auditd  (state=present is optional)
+    - name: Install auditd  (state=present is optional)   # Install auditd for system auditing
       ansible.builtin.apt:
         name: auditd
         state: present
@@ -51,7 +50,6 @@
       loop:
         - ufw  # Uncomplicated Firewall
         - fail2ban  # Intrusion prevention system
-        - aide  # File integrity checker
         - debsums  # Verification of installed package files
 
     - name: Configure UFW (Uncomplicated Firewall)
@@ -62,29 +60,29 @@
         port: 22  # Allow SSH
         rule: allow
 
-    # - name: Configure Fail2ban
-    #   template:
-    #     src: fail2ban.j2
-    #     dest: /etc/fail2ban/jail.local
-    #   notify: Restart Fail2ban
-    
-    - name: Initialize AIDE database
-      command: aideinit
-      args:
-        creates: /var/lib/aide/aide.db
+    - name: Install required system packages
+      apt:
+        pkg:
+          - net-tools   # For netstat command
+          - curl
+          - python3-pip   # pip command
+          - virtualenv
+          - python3-setuptools
+        state: latest
+        update_cache: true
 
-    - name: Schedule periodic AIDE checks
-      cron:
-        name: Run AIDE integrity check
-        job: aide --check
-        minute: "0"
-        hour: "6"
+    # Install Java OpenJDK 20
+    - name: Install Java version 20
+      apt:
+        name: openjdk-20-jre-headless
+        state: present
+        update_cache: yes
 
-    - name: Verify installed package files
-      command: debsums -c
+    - name: Verify installed package files    # Verification of Installed Package Files
+      command: debsums -c   # Report changed files
 
   handlers:
-    - name: Restart SSH
+    - name: Restart SSH   # Support above SSH steps
       service: 
         name: ssh
         state: restarted 

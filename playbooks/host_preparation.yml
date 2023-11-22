@@ -1,0 +1,98 @@
+---
+- name: Host Preparation and Security Hardening
+  hosts: '{{ hostname | default("github_runners") }}'
+  become: yes
+  ###### This ansible-playbook is tested with Ubuntu 22.04 ######
+  tasks:
+    - name: Update APT package cache and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    - name: Disable root login via SSH    # SSH using root user is disabled
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#PermitRootLogin'
+        line: 'PermitRootLogin no'
+        backup: yes
+      notify: Restart SSH
+
+    - name: Configure SSH server parameters
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      notify: Restart SSH
+      with_items:
+        - { regexp: '#PasswordAuthentication', line: 'PasswordAuthentication no' }    # Disable SSH password authentication
+        - { regexp: '#PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }    # Do not allow empty password
+        - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }    # Do not allow X11 Forwarding
+
+    - name: Set appropriate permissions on sensitive files    # Files in the items can only read and write by the owner
+      file:
+        path: "{{ item.path }}"
+        owner: root
+        group: root
+        mode: "0600"
+      with_items:
+        - { path: "/etc/shadow" }
+        - { path: "/etc/ssh/sshd_config" }
+
+    - name: Install auditd  (state=present is optional)   # Install auditd for system auditing
+      ansible.builtin.apt:
+        name: auditd
+        state: present
+
+    - name: Install essential security tools
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - ufw  # Uncomplicated Firewall
+        - fail2ban  # Intrusion prevention system
+        - debsums  # Verification of installed package files
+
+    - name: Configure UFW (Uncomplicated Firewall)
+      ufw:
+        state: enabled
+        policy: deny  # Set default policy to deny incoming traffic
+        proto: tcp
+        port: 22  # Allow SSH
+        rule: allow
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - net-tools   # For netstat command
+          - curl
+          - python3-pip   # pip command
+          - virtualenv
+          - python3-setuptools
+          - unzip
+        state: latest
+        update_cache: true
+
+    # Install Java OpenJDK 20
+    - name: Install Java version 17
+      apt:
+        name: openjdk-17-jre-headless
+        state: present
+        update_cache: yes
+
+    # Install AWS CLI with pip
+    - name: Install AWS CLI package
+      ansible.builtin.pip:
+        name: awscli
+
+    - name: Install missing package files   # Install missing files from Debsums report
+      shell: apt-get -y --reinstall install $(debsums -c 2>&1 | grep -E -o 'from [^ ]* package' | cut -d\  -f2 | sort -u)
+
+    - name: Verify installed package files    # Verification of Installed Package Files
+      command: debsums -c   # Report changed files
+
+  handlers:
+    - name: Restart SSH   # Support above SSH steps
+      service: 
+        name: ssh
+        state: restarted 
+        enabled: true

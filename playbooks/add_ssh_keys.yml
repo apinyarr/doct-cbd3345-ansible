@@ -1,0 +1,32 @@
+---
+- name: Allow users to access the server via SSH
+  hosts: '{{ hostname | default("github_runners") }}'
+  become: yes
+  ###### This ansible-playbook is tested with Ubuntu 22.04 ######
+  vars_files:
+    - ../shared_vars/team_pub_keys_secret.yml   # The encrypted file that store users public keys (vault key is required to decrypt)
+
+  tasks:
+    - name: Add lead public key to host   # Lead is always allowed to access production and staging servers
+      ansible.posix.authorized_key:
+        user: ubuntu
+        state: present
+        key: '{{ lead }}'
+
+    - name: Register a variable
+      ansible.builtin.command: echo '{{ is_staging | default(false) }}'   # Check if the environment is staging (default = false)
+      register: result
+
+    - name: Add senior public key to host   # Senior is allowed to access only the staging server
+      ansible.posix.authorized_key:
+        user: ubuntu
+        state: present
+        key: '{{ senior }}'
+      when: result.stdout == 'true'   # If the environtment is staging, copy senior ssh key
+
+    - name: Add junior public key to host   # Junior is allowed to access only the staging server
+      ansible.posix.authorized_key:
+        user: ubuntu
+        state: present
+        key: '{{ junior }}'
+      when: result.stdout == 'true'   # If the environment is staging, copy junior ssh key

@@ -72,17 +72,24 @@
         state: latest
         update_cache: true
 
-    # Install Java OpenJDK 20
-    - name: Install Java version 17
+    - name: Install Java version 17   # Install Java OpenJDK 20
       apt:
         name: openjdk-17-jre-headless
         state: present
         update_cache: yes
 
-    # Install AWS CLI with pip
-    - name: Install AWS CLI package
+    - name: Install AWS CLI package   # Install AWS CLI with pip
       ansible.builtin.pip:
         name: awscli
+
+    - name: Download kubectl command    # Download the command from the official web site
+      shell: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+    - name: Install kubectl command   # Change permission and path
+      shell: chmod +x kubectl && mv kubectl /usr/local/bin    
+
+    - name: Install helm command
+      shell: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
     - name: Install missing package files   # Install missing files from Debsums report
       shell: apt-get -y --reinstall install $(debsums -c 2>&1 | grep -E -o 'from [^ ]* package' | cut -d\  -f2 | sort -u)

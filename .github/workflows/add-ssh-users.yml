@@ -1,0 +1,55 @@
+---
+name: "Ansible Add SSH Users to Runner (users management)"
+on:
+  push:
+    tags:
+      - 'add-ssh-users-*'
+
+jobs:
+  prepare-ansible-master-node:
+    name: Ensure Ansible is installed on Master Node
+    runs-on: master
+
+    steps:
+      - name: Install Ansible on Master Node
+        run: python3 -m pip install --user ansible
+        
+  add-ssh-users-uat-runner:
+    name: Ansible Add SSH Users to UAT Runner
+    if: startsWith(github.ref, 'refs/tags/add-ssh-users-uat-')
+    needs: 
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Get Ansible Vault Key from GitHub Secret
+        run: echo '${{ secrets.VAULT_KEYFILE }}' > ./shared_vars/vault_keyfile
+
+      - name: Run Add SSH Keys Playbook
+        run: ansible-playbook -i inventories/staging/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile -e "is_staging=true"
+
+      - name: Remove Vault Key File for Security Purpose
+        run: rm -f ./shared_vars/vault_keyfile
+
+  add-ssh-users-prd-runner:
+    name: Ansible Add SSH Users to PRD Runner
+    if: startsWith(github.ref, 'refs/tags/add-ssh-users-prd-')
+    needs: 
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Get Ansible Vault Key from GitHub Secret
+        run: echo '${{ secrets.VAULT_KEYFILE }}' > ./shared_vars/vault_keyfile
+
+      - name: Run Add SSH Keys Playbook
+        run: ansible-playbook -i inventories/productions/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile
+
+      - name: Remove Vault Key File for Security Purpose
+        run: rm -f ./shared_vars/vault_keyfile

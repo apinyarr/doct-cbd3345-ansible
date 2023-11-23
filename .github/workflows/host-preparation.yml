@@ -1,0 +1,18 @@
+---
+name: "Ansible Host Preparation (security setting and install packages)"
+on:
+  push:
+    branches:
+      - 'add/action-run-ansible'    # Remove this trigger after finishing the development
+    tags:
+      - 'host-preparation-*'
+
+jobs:
+  host-preparation-uat-runner:
+    name: Ansible Host Preparation for UAT Runner
+    if: startsWith(github.ref, 'refs/tags/host-preparation-uat-')
+    runs-on: master
+
+    steps:
+      - name: Install Ansible on Master Node
+        run: python3 -m pip install --user ansible

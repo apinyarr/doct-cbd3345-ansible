@@ -8,11 +8,25 @@ on:
       - 'host-preparation-*'
 
 jobs:
-  host-preparation-uat-runner:
-    name: Ansible Host Preparation for UAT Runner
-    if: startsWith(github.ref, 'refs/tags/host-preparation-uat-')
+  prepare-ansible-master-node:
+    name: Ensure Ansible is installed on Master Node
     runs-on: master
 
     steps:
       - name: Install Ansible on Master Node
         run: python3 -m pip install --user ansible
+
+  host-preparation-uat-runner:
+    name: Ansible Host Preparation for UAT Runner
+    if: startsWith(github.ref, 'refs/tags/host-preparation-uat-')
+    needs:
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Run Host Preparation Playbook
+        run: ansible-playbook -i inventories/staging/hosts playbooks/host_preparation.yml
+    

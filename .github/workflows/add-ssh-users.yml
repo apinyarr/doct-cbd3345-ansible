@@ -31,6 +31,9 @@ jobs:
       - name: Run Add SSH Keys Playbook
         run: ansible-playbook -i inventories/staging/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile -e "is_staging=true"
 
+      - name: Remove Vault Key File for Security Purpose
+        run: rm -f ./shared_vars/vault_keyfile
+
   add-ssh-users-prd-runner:
     name: Ansible Add SSH Users to PRD Runner
     if: startsWith(github.ref, 'refs/tags/add-ssh-users-prd-')
@@ -47,3 +50,6 @@ jobs:
 
       - name: Run Add SSH Keys Playbook
         run: ansible-playbook -i inventories/staging/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile"
+
+      - name: Remove Vault Key File for Security Purpose
+        run: rm -f ./shared_vars/vault_keyfile

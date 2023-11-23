@@ -1,0 +1,43 @@
+---
+name: "Ansible Java Update (software update)"
+on:
+  push:
+    tags:
+      - 'java-update-*'
+
+jobs:
+  prepare-ansible-master-node:
+    name: Ensure Ansible is installed on Master Node
+    runs-on: master
+
+    steps:
+      - name: Install Ansible on Master Node
+        run: python3 -m pip install --user ansible
+
+  java-update-uat-runner:
+    name: Ansible Java Update for UAT Runner
+    if: startsWith(github.ref, 'refs/tags/java-update-uat-')
+    needs:
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Run Upgrade Java Playbook
+        run: ansible-playbook -i inventories/staging/hosts playbooks/upgrade_java.yml
+
+  java-update-prd-runner:
+    name: Ansible Java Update for PRD Runner
+    if: startsWith(github.ref, 'refs/tags/java-update-prd-')
+    needs:
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Run Upgrade Java Playbook
+        run: ansible-playbook -i inventories/productions/hosts playbooks/upgrade_java.yml

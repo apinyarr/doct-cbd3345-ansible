@@ -2,8 +2,6 @@
 name: "Ansible Host Preparation (security setting and install packages)"
 on:
   push:
-    branches:
-      - 'add/action-run-ansible'    # Remove this trigger after finishing the development
     tags:
       - 'host-preparation-*'
 
@@ -29,4 +27,18 @@ jobs:
 
       - name: Run Host Preparation Playbook
         run: ansible-playbook -i inventories/staging/hosts playbooks/host_preparation.yml
+
+  host-preparation-prd-runner:
+    name: Ansible Host Preparation for PRD Runner
+    if: startsWith(github.ref, 'refs/tags/host-preparation-prd-')
+    needs: 
+      - prepare-ansible-master-node
+    runs-on: master
+
+    steps:
+      - name: Checkout Ansible Repository
+        uses: actions/checkout@v4
+
+      - name: Run Host Preparation Playbook
+        run: ansible-playbook -i inventories/productions/hosts playbooks/host_preparation.yml
     

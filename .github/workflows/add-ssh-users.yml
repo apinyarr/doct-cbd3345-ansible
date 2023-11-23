@@ -3,7 +3,7 @@ name: "Ansible Add SSH Users to Runner (users management)"
 on:
   push:
     tags:
-      - 'add-ssh-users-'
+      - 'add-ssh-users-*'
 
 jobs:
   prepare-ansible-master-node:

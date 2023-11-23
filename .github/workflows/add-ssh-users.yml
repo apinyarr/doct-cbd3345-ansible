@@ -49,7 +49,7 @@ jobs:
         run: echo '${{ secrets.VAULT_KEYFILE }}' > ./shared_vars/vault_keyfile
 
       - name: Run Add SSH Keys Playbook
-        run: ansible-playbook -i inventories/staging/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile
+        run: ansible-playbook -i inventories/productions/hosts playbooks/add_ssh_keys.yml --vault-id ./shared_vars/vault_keyfile
 
       - name: Remove Vault Key File for Security Purpose
         run: rm -f ./shared_vars/vault_keyfile

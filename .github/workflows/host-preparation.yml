@@ -1,44 +1,43 @@
 ---
 name: "Ansible Host Preparation (security setting and install packages)"
+
+# Trigger the workflow on pushes to the repository if the commit has a tag matching the pattern 'host-preparation-*'
 on:
   push:
     tags:
       - 'host-preparation-*'
 
 jobs:
+  # Job to ensure Ansible is installed on the Master Node
   prepare-ansible-master-node:
     name: Ensure Ansible is installed on Master Node
-    runs-on: master
+    runs-on: ubuntu-latest
 
     steps:
+      - name: Cache Ansible installation
+        uses: actions/cache@v2
+        with:
+          path: ~/.local
+          key: ansible-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ansible-${{ runner.os }}-
+
       - name: Install Ansible on Master Node
         run: python3 -m pip install --user ansible
 
-  host-preparation-uat-runner:
-    name: Ansible Host Preparation for UAT Runner
-    if: startsWith(github.ref, 'refs/tags/host-preparation-uat-')
+  # Job to perform Ansible Host Preparation
+  host-preparation:
+    name: Ansible Host Preparation
     needs:
       - prepare-ansible-master-node
-    runs-on: master
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [uat, prd]
 
     steps:
       - name: Checkout Ansible Repository
         uses: actions/checkout@v4
 
       - name: Run Host Preparation Playbook
-        run: ansible-playbook -i inventories/staging/hosts playbooks/host_preparation.yml
-
-  host-preparation-prd-runner:
-    name: Ansible Host Preparation for PRD Runner
-    if: startsWith(github.ref, 'refs/tags/host-preparation-prd-')
-    needs: 
-      - prepare-ansible-master-node
-    runs-on: master
-
-    steps:
-      - name: Checkout Ansible Repository
-        uses: actions/checkout@v4
-
-      - name: Run Host Preparation Playbook
-        run: ansible-playbook -i inventories/productions/hosts playbooks/host_preparation.yml
-    
+        run: ansible-playbook -i inventories/${{ matrix.env }}/hosts playbooks/host_preparation.yml

@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'add-ssh-users-*'
+    branches:
+      - 'add/ssh-key-for-intern'
 
 jobs:
   prepare-ansible-master-node:

@@ -30,3 +30,10 @@
         state: present
         key: '{{ junior }}'
       when: result.stdout == 'true'   # If the environment is staging, copy junior ssh key
+
+    - name: Add intern public key to host   # Intern  is allowed to access only the staging server
+      ansible.posix.authorized_key:
+        user: ubuntu
+        state: present
+        key: '{{ intern }}'
+      when: result.stdout == 'true'   # If the environment is staging, copy intern ssh key
